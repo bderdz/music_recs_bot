@@ -64,12 +64,12 @@ class Spotify:
         client: HttpClient = HttpClient(url)
 
         response: dict = (await client.send_get(headers)).get(search_type.value)
-        items: list[dict] = response.get("items")
+        items: list[dict] = response["items"]
 
         result: list[dict[str, str]] = list(
             map(lambda item: {
-                "name": f"{item.get("name")}",
-                "id": item.get("id")},
+                "name": f"{item["name"]} {f" - {item["artists"][0]["name"]}" if search_type == SearchType.TRACK else ""}",
+                "id": item["id"]},
                 items))
 
         return result
@@ -100,4 +100,10 @@ class Spotify:
 
         response = await client.send_get(headers=headers)
 
-        return response.get("tracks")
+        recs_list: list[dict] = list(map(lambda track: {
+            "name": f"{track["name"]} - {track["artists"][0]["name"]}",
+            "photo": track["album"]["images"][1]["url"],
+            "url": track["external_urls"]["spotify"]
+        }, response["tracks"]))
+
+        return recs_list
