@@ -1,5 +1,6 @@
 from aiogram import Bot
 from aiogram.types import BotCommandScopeDefault
+
 from music_yoda import config
 
 

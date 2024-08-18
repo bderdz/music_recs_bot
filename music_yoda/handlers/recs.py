@@ -11,15 +11,48 @@ from music_yoda.handlers.preview import preview_handler
 
 router: Router = Router()
 
+recs_main_text: str = """
+<b>🎲 Create Your Music Recommendations</b>
+
+<b>🤔 Select up to 5 inspirations, such as artists, tracks, or genres.
+Remaining: {amount}.</b>
+
+🎹 With your choices, we’ll create personalized music recommendations just for you!
+
+<b>Selected Inspirations:</b>
+
+"""
+
+search_text: str = """
+<b>🔎 Provide a Name to Search</b>
+
+To continue, please provide the name of an artist, track, or genre to search for.
+<b>For genres, the name must be in English only. </b>
+"""
+
+result_text: str = """
+<b>🔎 Select from Search Results</b>
+
+Please select one of the 5 options below that best match your query.
+
+"""
+
+research_text: str = "❔ If you don’t see the correct result, provide a more precise name for automatic re-search."
+
+limit_text: str = """
+<b>🎵 Select the Number of Tracks to Generate</b>
+
+Please select the number of tracks to generate
+"""
+
 
 @router.message(StateFilter(None), Command("recs"))
-@router.message(StateFilter(None), F.text.lower().contains("recommendations"))
+@router.message(StateFilter(None), F.text == "🎲 Recommendations")
 async def recs_handler(message: Message, state: FSMContext, spotify: Spotify) -> None:
     genres_list = await spotify.get_genres()
-    text: str = "<b>recs</b>\n"
 
     await message.delete()
-    recs_message = await message.answer(text=text, reply_markup=recs_keyboard(seed_amount=0))
+    recs_message = await message.answer(text=recs_main_text.format(amount=5), reply_markup=recs_keyboard(seed_amount=0))
 
     await state.set_state(RecsState.idle)
     await state.update_data(
@@ -37,29 +70,34 @@ async def recs_handler(message: Message, state: FSMContext, spotify: Spotify) ->
 async def recs_main_menu(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
     seed_amount = data["seed_amount"]
-    text: str = "<b>recs</b>\n"
-
-    text += get_seed_info(genres=data["seed_genres"], artists=data["seed_artists"], tracks=data["seed_tracks"])
+    text = recs_main_text.format(amount=5 - seed_amount)
+    text += get_seed_info(
+        genres=data["seed_genres"],
+        artists=data["seed_artists"],
+        tracks=data["seed_tracks"])
 
     await state.set_state(RecsState.idle)
-    await message.edit_text(text=text, reply_markup=recs_keyboard(seed_amount=seed_amount))
+    await message.edit_text(
+        text=text,
+        reply_markup=recs_keyboard(seed_amount=seed_amount))
 
 
 @router.callback_query(StateFilter(RecsState.idle), F.data.in_(["recs_tracks", "recs_artists", "recs_genres"]))
 async def search_handler(callback: CallbackQuery, state: FSMContext) -> None:
-    search_type: str = callback.data.split("_")[1]
+    await callback.answer()
 
+    search_type: str = callback.data.split("_")[1]
     if search_type == "tracks":
         await state.set_state(RecsState.search_track)
-        await callback.message.edit_text("tracks seed", reply_markup=back_button().as_markup())
+        await callback.message.edit_text(text=search_text, reply_markup=back_button().as_markup())
 
     elif search_type == "artists":
         await state.set_state(RecsState.search_artist)
-        await callback.message.edit_text("artists seed", reply_markup=back_button().as_markup())
+        await callback.message.edit_text(text=search_text, reply_markup=back_button().as_markup())
 
     elif search_type == "genres":
         await state.set_state(RecsState.search_genre)
-        await callback.message.edit_text("genres seed", reply_markup=back_button().as_markup())
+        await callback.message.edit_text(text=search_text, reply_markup=back_button().as_markup())
 
 
 @router.message(StateFilter(RecsState.search_track, RecsState.search_artist))
@@ -68,14 +106,14 @@ async def process_search(message: Message, bot: Bot, state: FSMContext, spotify:
     state_name: str = (await state.get_state()).split(":")[1]
     search_type = SearchType.TRACK if state_name == "search_track" else SearchType.ARTIST
     search_query: str = message.text
-    text: str = ""
-
     # Response data of the search Spotify API request
     response: list[dict[str, str]] = await spotify.search(query=search_query, search_type=search_type)
     await state.update_data({"search_data": response})  # Saving response data to the state
 
+    text: str = result_text
     for i, item in enumerate(response):
         text += f"<b>{i + 1}. {item["name"]}</b>\n\n"
+    text += research_text
 
     await message.delete()  # Removing the user query message
     await bot.edit_message_text(
@@ -86,6 +124,8 @@ async def process_search(message: Message, bot: Bot, state: FSMContext, spotify:
 
 @router.callback_query(StateFilter(RecsState.search_track), F.data.startswith("search_"))
 async def search_track_handler(callback: CallbackQuery, state: FSMContext) -> None:
+    await callback.answer()
+
     data = await state.get_data()
     result_id: int = int(callback.data.split("_")[1])
     result = (await state.get_data())["search_data"][result_id]
@@ -125,10 +165,12 @@ async def process_genre_match(message: Message, bot: Bot, state: FSMContext) -> 
     genres_list = data["genres_list"]
     message_id: int = data["message_id"]
     result = find_matches(pattern=message.text, word_list=genres_list)
-    text: str = ""
+
+    text: str = result_text
 
     for i, genre in enumerate(result):
-        text += f"{i + 1}. {genre}\n"
+        text += f"<b>{i + 1}. {genre}</b>\n\n"
+    text += research_text
 
     await state.update_data({"search_data": result})
     await message.delete()
@@ -163,7 +205,7 @@ async def search_genre_handler(callback: CallbackQuery, state: FSMContext) -> No
 async def limit_handler(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
     await state.set_state(RecsState.limit)
-    await callback.message.edit_text("limit", reply_markup=limit_keyboard())
+    await callback.message.edit_text(text=limit_text, reply_markup=limit_keyboard())
 
 
 @router.callback_query(StateFilter(RecsState.limit), F.data.startswith("limit_"))

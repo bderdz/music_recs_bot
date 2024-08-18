@@ -3,6 +3,7 @@ from aiogram import Bot, Dispatcher
 
 from music_yoda import config
 from music_yoda.api.spotify import Spotify
+
 from music_yoda.handlers import start, general, recs, preview
 from music_yoda.utils import set_commands
 from music_yoda.middlewares import SpotifyMiddleware
@@ -25,6 +26,7 @@ async def main() -> None:
 
     await bot.delete_webhook(drop_pending_updates=True)
     await set_commands(bot)
+
     await dp.start_polling(bot)
 
 

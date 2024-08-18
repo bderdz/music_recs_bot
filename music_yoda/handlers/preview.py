@@ -18,7 +18,7 @@ async def preview_handler(callback: CallbackQuery, state: FSMContext) -> None:
     tracks: list[dict] = (await state.get_data()).get("tracks")
     message = await callback.message.answer_photo(
         photo=tracks[0].get("photo"),
-        caption=tracks[0].get("name"),
+        caption=f"💿 <b>{tracks[0].get("name")}</b>",
         show_caption_above_media=True,
         reply_markup=preview_keyboard(url=tracks[0].get("url"), page=0, length=len(tracks) - 1))
 
@@ -36,7 +36,7 @@ async def process_pagination(query: CallbackQuery, state: FSMContext, callback_d
     await query.message.edit_media(
         media=InputMediaPhoto(
             media=tracks[page].get("photo"),
-            caption=tracks[page].get("name"),
+            caption=f"💿 <b>{tracks[page].get("name")}</b>",
             show_caption_above_media=True,
         ),
         reply_markup=preview_keyboard(url=tracks[page].get("url"), page=page, length=length))
@@ -53,7 +53,7 @@ async def process_close_preview(query: CallbackQuery, state: FSMContext) -> None
     await query.message.delete()
 
     tracks: list[dict] = (await state.get_data()).get("tracks")
-    summary_text = ""
+    summary_text = "<b>💿 Recommended for You:</b>\n\n"
 
     for track in tracks:
         summary_text += f'🎧 <b><a href="{track["url"]}">{track["name"]}</a></b>\n\n'

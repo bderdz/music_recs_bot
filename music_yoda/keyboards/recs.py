@@ -1,5 +1,5 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder, InlineKeyboardMarkup
-from music_yoda.keyboards.general import back_button
+from music_yoda.keyboards.general import back_button, close_button
 
 
 def recs_keyboard(seed_amount: int) -> InlineKeyboardMarkup:
@@ -15,9 +15,14 @@ def recs_keyboard(seed_amount: int) -> InlineKeyboardMarkup:
             builder.button(text=button[0], callback_data=f"recs_{button[1]}")
 
     if seed_amount != 0:
-        builder.button(text="Submit", callback_data="recs_limit")
+        builder.button(text="✅ Submit", callback_data="recs_limit")
 
-    builder.adjust(3, 1)
+    builder.attach(close_button())
+
+    if seed_amount < 5:
+        builder.adjust(3, 1, 1)
+    else:
+        builder.adjust(1, 1)
 
     return builder.as_markup()
 
