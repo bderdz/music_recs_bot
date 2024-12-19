@@ -16,5 +16,4 @@ PROPERTIES = DefaultBotProperties(parse_mode=ParseMode.HTML)
 commands: list[BotCommand] = [
     BotCommand(command="/start", description="🏁 Start"),
     BotCommand(command="/recs", description="🎲 Recommendations"),
-    BotCommand(command="/support", description="🎁 Support Author")
 ]
